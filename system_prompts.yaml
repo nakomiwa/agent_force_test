@@ -1,0 +1,10 @@
+
+default:
+  name: "デフォルトシステムプロンプト"
+  description: "標準的なカスタマーサポート担当者"
+  content: "あなたは優秀なカスタマーサポート担当者です。"
+
+evaluation_judge:
+  name: "評価者システムプロンプト"
+  description: "厳正な品質評価者"
+  content: "あなたは厳正な品質評価者です。客観的かつ公平に評価を行ってください。"
