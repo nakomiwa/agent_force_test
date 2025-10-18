@@ -8,8 +8,23 @@ import logging
 import os
 from abc import ABC, abstractmethod
 
-class BacePrompt(ABC):  # 抽象クラスに変更
+class BacePrompt(ABC):
+    """
+    LLMプロンプト実行の基底抽象クラス
+    
+    共通機能：
+    - YAMLファイルの読み書き
+    - LLMクライアントの設定
+    - プロジェクト構造の管理
+    """
+    
     def __init__(self, experiment_base_path: str = "/Workspace/b_poc/b_0048/experiments"):
+        """
+        初期化処理
+        
+        Args:
+            experiment_base_path: MLflow実験のベースパス
+        """
         self.dbutils = dbutils
         self.llm_client = None
         self._setup_llm_client()
@@ -27,6 +42,7 @@ class BacePrompt(ABC):  # 抽象クラスに変更
         logging.getLogger("mlflow").setLevel(logging.ERROR)
         
     def _setup_llm_client(self):
+        """LLMクライアントの設定"""
         scope = "my-secrets"
         key = "openai-api-key"
         api_key = self.dbutils.secrets.get(scope=scope, key=key)
@@ -34,9 +50,13 @@ class BacePrompt(ABC):  # 抽象クラスに変更
     
     def load_yaml(self, filename: str = "prompt.yaml") -> Dict[str, Any]:
         """
-        YAMLファイルを読み込む
+        クラス固有のYAMLセクションを読み込む
+        
         Args:
-            filename: config/フォルダ内のファイル名（デフォルト: prompt.yaml）
+            filename: config/フォルダ内のファイル名
+            
+        Returns:
+            YAMLデータ（クラス名のセクション）
         """
         yaml_path = os.path.join(self.config_dir, filename)
         
@@ -45,17 +65,20 @@ class BacePrompt(ABC):  # 抽象クラスに変更
                 data = yaml.safe_load(file)
                 return data.get(self.class_name, {}) if data else {}
         except FileNotFoundError:
-            print(f"⚠️ ファイルが見つかりません: {yaml_path}")
             return {}
         except Exception as e:
-            print(f"❌ YAMLファイル読み込みエラー: {e}")
+            print(f"YAMLファイル読み込みエラー: {e}")
             return {}
     
     def load_common_yaml(self, filename: str = "prompt.yaml") -> Dict[str, Any]:
         """
-        YAMLファイルのCommonセクションを読み込む
+        共通のYAMLセクション（Common）を読み込む
+        
         Args:
-            filename: config/フォルダ内のファイル名（デフォルト: prompt.yaml）
+            filename: config/フォルダ内のファイル名
+            
+        Returns:
+            YAMLデータ（Commonセクション）
         """
         yaml_path = os.path.join(self.config_dir, filename)
         
@@ -64,18 +87,18 @@ class BacePrompt(ABC):  # 抽象クラスに変更
                 data = yaml.safe_load(file)
                 return data.get('Common', {}) if data else {}
         except FileNotFoundError:
-            print(f"⚠️ ファイルが見つかりません: {yaml_path}")
             return {}
         except Exception as e:
-            print(f"❌ YAMLファイル読み込みエラー: {e}")
+            print(f"YAMLファイル読み込みエラー: {e}")
             return {}
     
     def save_yaml(self, content: Dict[str, Any], filename: str = "answer.yaml"):
         """
-        YAMLファイルに保存する
+        YAMLファイルにクラス固有データを保存
+        
         Args:
             content: 保存する内容
-            filename: config/フォルダ内のファイル名（デフォルト: answer.yaml）
+            filename: config/フォルダ内のファイル名
         """
         yaml_path = os.path.join(self.config_dir, filename)
         
@@ -91,26 +114,25 @@ class BacePrompt(ABC):  # 抽象クラスに変更
             data[self.class_name] = content
             
             # ファイルに保存
-            os.makedirs(self.config_dir, exist_ok=True)  # ディレクトリがない場合は作成
+            os.makedirs(self.config_dir, exist_ok=True)
             with open(yaml_path, 'w', encoding='utf-8') as file:
                 yaml.safe_dump(data, file, allow_unicode=True, default_flow_style=False)
                 
-            print(f"✅ ファイル保存完了: {yaml_path}")
-            
         except Exception as e:
-            print(f"❌ YAMLファイル保存エラー: {e}")
+            print(f"YAMLファイル保存エラー: {e}")
     
     @abstractmethod
     def _setup_mlflow_experiment(self):
         """
-        MLflow実験の設定を行う（子クラスで実装必須）
+        MLflow実験の設定（子クラスで実装必須）
         """
         pass
     
     @abstractmethod
     def generate(self) -> str:
         """
-        回答を生成する（子クラスで実装必須）
+        回答を生成（子クラスで実装必須）
+        
         Returns:
             生成された回答
         """
@@ -119,9 +141,11 @@ class BacePrompt(ABC):  # 抽象クラスに変更
     @abstractmethod
     def evaluate(self, answer: str = None) -> Dict[str, Any]:
         """
-        評価を実行する（子クラスで実装必須）
+        回答を評価（子クラスで実装必須）
+        
         Args:
-            answer: 評価対象の回答（省略時はanswer.yamlから読み込み）
+            answer: 評価対象の回答
+            
         Returns:
             評価結果
         """
@@ -130,21 +154,16 @@ class BacePrompt(ABC):  # 抽象クラスに変更
     def run(self):
         """
         生成と評価を一括実行
-        """
-        print(f"🚀 {self.class_name} 実行開始...")
-        print(f"📁 プロジェクトルート: {self.project_root}")
-        print(f"📁 Configディレクトリ: {self.config_dir}")
-        print(f"📊 MLflow実験パス: {self.experiment_path}")
         
+        Returns:
+            実行結果（回答と評価）
+        """
         # 回答生成
         answer = self.generate()
         if not answer:
             return {"error": "回答生成に失敗しました"}
         
-        print(f"✅ 回答生成完了 (文字数: {len(answer)})")
-        
         # 評価実行
         evaluation = self.evaluate(answer)
-        print(f"✅ 評価完了")
         
         return {"answer": answer, "evaluation": evaluation}
