@@ -103,7 +103,7 @@ class BacePrompt(ABC):
         except Exception as e:
             print(f"YAMLファイル保存エラー: {e}")
     
-    @abstractmethod
+    #@abstractmethod
     def _setup_mlflow_experiment(self):
         """
         MLflow実験の設定（子クラスで実装必須）
